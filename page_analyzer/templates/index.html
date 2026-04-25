@@ -1,11 +1,26 @@
 {% extends "base.html" %}
 
-{% block title %}Главная{% endblock %}
+{% block title %}Анализатор страниц{% endblock %}
 
 {% block content %}
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert {% if message.0 == 'error' %}alert-danger{% else %}alert-success{% endif %} alert-dismissible fade show" style="width: 60%; margin: 10px auto;" role="alert">
+                {{ message.1 }}
+            </div>
+        {% endfor %}
+    {% endif %}
+{% endwith %}
+
 <div class="h-100 p-5 bg-body-tertiary border rounded-3" style="width: 60%; margin: auto;"> 
     <h2>Анализатор страниц</h2> 
     <p>Бесплатно проверяйте сайты на SEO-пригодность</p>
-    <form class="d-flex" role="search"> <input class="form-control me-2" type="search" placeholder="https://example.com" aria-label="Сайт"> <button class="btn btn-primary" type="submit">ПРОВЕРИТЬ</button> </form>
+    <form class="d-flex" action="{{ url_for('urls') }}" method="post">    
+        <input class="form-control me-2" type="text" name="url" placeholder="https://example.com" aria-label="Сайт">
+        <button class="btn btn-primary" type="submit">ПРОВЕРИТЬ</button>
+    </form>
 </div>
+
 {% endblock %}

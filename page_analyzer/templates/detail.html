@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+
+{% block title %}Сайты{% endblock %}
+
+{% block content %}
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert {% if message.0 == 'error' %}alert-danger{% else %}alert-success{% endif %} alert-dismissible fade show" style="width: 60%; margin: 10px auto;" role="alert">
+                {{ message.1 }}
+            </div>
+        {% endfor %}
+    {% endif %}
+{% endwith %}
+
+    <div style="width: 60%; margin: auto;">
+    <h2>Сайт: {{ url.name }}</h2> 
+    <table class="table table-sm table-bordered" data-test="url">
+        <tbody>
+        <tr>
+            <th scope="col">ID</th>
+            <td>{{ url.id }}</td>
+        </tr>
+        <tr>
+            <th scope="col">Имя</th>
+            <td>{{ url.name }}</td>
+        </tr>
+        <tr>
+            <th scope="col">Дата создания</th>
+            <td>{{ url.created_at }}</td>
+        </tr>
+        </tbody>
+    </table>
+    </div>
+
+{% endblock %}
