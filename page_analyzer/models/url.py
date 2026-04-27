@@ -24,7 +24,6 @@ STATUS_INFO = 'info'
 # seo
 SEO_MSG_ERR = 'Произошла ошибка при проверке'
 SEO_MSG_SUC = 'Страница успешно проверена'
-CLIENT_ERROR_CODES = range(400, 500)
 
 
 def _normalize(url: str) -> str:
@@ -172,12 +171,11 @@ def add_check(id: int, url: str) -> tuple[str, str]:
     # 2xx
     try:
         response.raise_for_status()
-        status, message = STATUS_SUC, SEO_MSG_SUC
     # 4xx, 5xx
     except requests.HTTPError:
-        if status_code not in CLIENT_ERROR_CODES:
-            return status, message
+        return status, message
     
+    status, message = STATUS_SUC, SEO_MSG_SUC
     result = _seo(response.text)
     with db.connect() as conn:
         with conn.cursor() as cur:
