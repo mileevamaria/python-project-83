@@ -12,7 +12,7 @@ DATE_FORMAT = '%Y-%m-%d'
 
 # validate & create
 MAX_URL_LENGTH = 255
-VAL_INCORRECT_MSG = 'Некорректный url'
+VAL_INCORRECT_MSG = 'Некорректный URL'
 VAL_INCORRECT_LEN_MSG = f'Длина url не может превышать {MAX_URL_LENGTH} символов'
 CREATE_MSG_INFO = 'Страница уже существует'
 CREATE_MSG_SUC = 'Страница успешно добавлена'
@@ -65,6 +65,8 @@ def _seo(html: str) -> dict:
 
 def create(url: str) -> tuple[int | None, str, str]:
     url_id = None
+
+    # validation
     error = _validate(url)
     if error:
         return url_id, STATUS_ERR, error
