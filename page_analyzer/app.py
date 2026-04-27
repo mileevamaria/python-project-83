@@ -51,5 +51,9 @@ def get_url(id):
 
 @app.route('/urls/<int:id>/checks', methods=['POST'])
 def check_url(id):
-    url_model.add_check(id)
+    url = url_model.find(id)
+    if not url:
+        return redirect(url_for('get_url', id=id)), 404
+    status, message = url_model.add_check(id, url['name'])
+    flash(message, status)
     return redirect(url_for('get_url', id=id))

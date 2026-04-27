@@ -1,12 +1,21 @@
 import psycopg2
 from psycopg2.extras import RealDictCursor
-from validators.url import url as url_validation_func
+import requests
 from urllib.parse import urlparse
+from validators.url import url as url_validation_func
 
 from page_analyzer import db
 
+# validation
 MAX_URL_LENGTH = 255
 DATE_FORMAT = '%Y-%m-%d'
+
+# SEO
+MSG_ERR = 'Произошла ошибка при проверке'
+MSG_SUC = 'Страница успешно проверена'
+STATUS_ERR = 'error'
+STATUS_SUC = 'success'
+CLIENT_ERROR_CODES = range(400, 500)
 
 
 def create(name: str) -> tuple[int | None, str]:
@@ -103,15 +112,29 @@ def validate(url: str) -> dict:
     return errors
 
 
-def add_check(id: int) -> None:
+def add_check(id: int, url: str) -> tuple[str, str]:
+    status_code = None
+    status, message = STATUS_ERR, MSG_ERR
+    try:
+        response = requests.get(url)
+        status_code = response.status_code
+        response.raise_for_status()
+        status, message = STATUS_SUC, MSG_SUC
+    except requests.HTTPError:
+        if status_code not in CLIENT_ERROR_CODES:
+            return status, message
+    except Exception:
+        return status, message
+
     conn = db.connect()
     cur = conn.cursor()
     cur.execute('''
-            INSERT INTO url_checks (url_id)
-            VALUES (%s);
+            INSERT INTO url_checks (url_id, status_code)
+            VALUES (%s, %s);
         ''',
-        (id,),
+        (id, status_code),
     )
     conn.commit()
     cur.close()
     conn.close()
+    return status, message
