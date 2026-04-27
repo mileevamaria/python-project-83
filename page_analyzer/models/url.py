@@ -83,14 +83,12 @@ def create(url: str) -> tuple[int | None, str, str]:
             (url,)
         )
         url_id = cur.fetchone()[0]
-        conn.commit()
         status, message = STATUS_SUC, CREATE_MSG_SUC
 
     # unique violated
     except psycopg2.errors.UniqueViolation:
         status, message = STATUS_INFO, CREATE_MSG_INFO
         conn.rollback()
-        print(f'url: {url}')
         cur.execute('''
                 SELECT id FROM urls WHERE name = %s;
             ''',
@@ -107,71 +105,67 @@ def create(url: str) -> tuple[int | None, str, str]:
 
 
 def find(id: int) -> dict:
-    conn = db.connect()
-    cur = conn.cursor(cursor_factory=RealDictCursor)
-    cur.execute('''
-            SELECT 
-                id, name, date(created_at) AS created_at
-            FROM urls 
-            WHERE id = %s;
-        ''',
-        (id,),
-    )
-    data = cur.fetchone()
-    if not data:
-        return {}
+    with db.connect() as conn:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            # get url
+            cur.execute('''
+                    SELECT 
+                        id, name, date(created_at) AS created_at
+                    FROM urls 
+                    WHERE id = %s;
+                ''',
+                (id,),
+            )
+            data = cur.fetchone()
+            if not data:
+                return {}
     
-    # checks list for url
-    cur.execute('''
-            SELECT 
-                id, 
-                status_code, 
-                h1, 
-                title, 
-                description, 
-                date(created_at) AS created_at
-            FROM url_checks 
-            WHERE url_id = %s
-            ORDER BY id DESC;
-        ''',
-        (id,),
-    )
-    checks = cur.fetchall()
-    cur.close()
-    conn.close()
-    data['checks'] = checks
-    return data
+            # checks list for url
+            cur.execute('''
+                    SELECT 
+                        id, 
+                        status_code, 
+                        h1, 
+                        title, 
+                        description, 
+                        date(created_at) AS created_at
+                    FROM url_checks 
+                    WHERE url_id = %s
+                    ORDER BY id DESC;
+                ''',
+                (id,),
+            )
+            checks = cur.fetchall()
+            data['checks'] = checks
+            return data
 
 
 def all() -> list:
-    conn = db.connect()
-    cur = conn.cursor(cursor_factory=RealDictCursor)
-
     # select url and results of its last check
-    cur.execute('''
-            SELECT DISTINCT ON (u.id)
-                u.id,
-                u.name,
-                uc.status_code AS last_status_code,
-                date(uc.created_at) AS last_created_at
-            FROM urls u
-            LEFT JOIN url_checks uc ON uc.url_id = u.id
-            ORDER BY u.id DESC;
-        '''
-    )
-    results = cur.fetchall()
-    cur.close()
-    conn.close()
+    with db.connect() as conn:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute('''
+                    SELECT DISTINCT ON (u.id)
+                        u.id,
+                        u.name,
+                        uc.status_code AS last_status_code,
+                        date(uc.created_at) AS last_created_at
+                    FROM urls u
+                    LEFT JOIN url_checks uc ON uc.url_id = u.id
+                    ORDER BY u.id DESC;
+                '''
+            )
+            results = cur.fetchall()
     return results
     
 
 def add_check(id: int, url: str) -> tuple[str, str]:
     status, message = STATUS_ERR, SEO_MSG_ERR
+    response = requests.get(url)
+    status_code = response.status_code
 
     # 2xx
     try:
-        response = requests.get(url)
-        status_code = response.status_code
         response.raise_for_status()
         status, message = STATUS_SUC, SEO_MSG_SUC
 
@@ -185,15 +179,16 @@ def add_check(id: int, url: str) -> tuple[str, str]:
         return status, message
     
     result = _seo(response.text)
-    conn = db.connect()
-    cur = conn.cursor()
-    cur.execute('''
-            INSERT INTO url_checks (url_id, status_code, h1, title, description)
-            VALUES (%s, %s, %s, %s, %s);
-        ''',
-        (id, status_code, result['h1'], result['title'], result['description']),
-    )
-    conn.commit()
-    cur.close()
-    conn.close()
+    with db.connect() as conn:
+        with conn.cursor() as cur:
+            cur.execute('''
+                    INSERT INTO url_checks 
+                        (url_id, status_code, h1, title, description)
+                    VALUES (%s, %s, %s, %s, %s);
+                ''',
+                (
+                    id, status_code, result['h1'], 
+                    result['title'], result['description'],
+                ),
+            )
     return status, message
