@@ -71,12 +71,13 @@ def create(url: str) -> tuple[int | None, str, str]:
 
     conn = db.connect()
     cur = conn.cursor()
+    url = _normalize(url)
     try:
         cur.execute('''
                 INSERT INTO urls (name) 
                 VALUES (%s) RETURNING id;
             ''',
-            (_normalize(url),)
+            (url,)
         )
         url_id = cur.fetchone()[0]
         conn.commit()
@@ -86,6 +87,7 @@ def create(url: str) -> tuple[int | None, str, str]:
     except psycopg2.errors.UniqueViolation:
         status, message = STATUS_INFO, CREATE_MSG_INFO
         conn.rollback()
+        print(f'url: {url}')
         cur.execute('''
                 SELECT id FROM urls WHERE name = %s;
             ''',
