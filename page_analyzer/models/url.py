@@ -151,7 +151,7 @@ def all() -> list:
                         date(uc.created_at) AS last_created_at
                     FROM urls u
                     LEFT JOIN url_checks uc ON uc.url_id = u.id
-                    ORDER BY u.id, uc.created_at DESC;
+                    ORDER BY u.id DESC;
                 '''
             )
             results = cur.fetchall()
