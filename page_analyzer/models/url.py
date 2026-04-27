@@ -1,9 +1,9 @@
+from urllib.parse import urlparse
+
 import psycopg2
 import requests
-
 from bs4 import BeautifulSoup
 from psycopg2.extras import RealDictCursor
-from urllib.parse import urlparse
 from validators.url import url as url_validation_func
 
 from page_analyzer import db
