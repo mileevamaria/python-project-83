@@ -13,7 +13,8 @@ DATE_FORMAT = '%Y-%m-%d'
 # validate & create
 MAX_URL_LENGTH = 255
 VAL_INCORRECT_MSG = 'Некорректный URL'
-VAL_INCORRECT_LEN_MSG = f'Длина url не может превышать {MAX_URL_LENGTH} символов'
+VAL_INCORRECT_LEN_MSG = (
+    f'Длина url не может превышать {MAX_URL_LENGTH} символов')
 CREATE_MSG_INFO = 'Страница уже существует'
 CREATE_MSG_SUC = 'Страница успешно добавлена'
 STATUS_ERR = 'danger'
@@ -133,7 +134,7 @@ def find(id: int) -> dict:
             WHERE url_id = %s
             ORDER BY id DESC;
         ''',
-        (id,),   
+        (id,),
     )
     checks = cur.fetchall()
     cur.close()
