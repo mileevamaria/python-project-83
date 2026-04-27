@@ -36,6 +36,7 @@ def urls():
 @app.route('/urls/<int:id>', methods=['GET'])
 def get_url(id):
     url = url_model.find(id)
+    print(f'url: {url}')
     return render_template('detail.html', url=url)
 
 

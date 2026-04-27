@@ -84,6 +84,7 @@ def create(url: str) -> tuple[int | None, str, str]:
         )
         url_id = cur.fetchone()[0]
         status, message = STATUS_SUC, CREATE_MSG_SUC
+        conn.commit()
 
     # unique violated
     except psycopg2.errors.UniqueViolation:
@@ -135,8 +136,7 @@ def find(id: int) -> dict:
                 ''',
                 (id,),
             )
-            checks = cur.fetchall()
-            data['checks'] = checks
+            data['checks'] = cur.fetchall()
             return data
 
 
@@ -161,22 +161,22 @@ def all() -> list:
 
 def add_check(id: int, url: str) -> tuple[str, str]:
     status, message = STATUS_ERR, SEO_MSG_ERR
-    response = requests.get(url)
-    status_code = response.status_code
+
+    try:
+        response = requests.get(url)
+        status_code = response.status_code
+    # other exceptions
+    except requests.exceptions.RequestException:
+        return status, message
 
     # 2xx
     try:
         response.raise_for_status()
         status, message = STATUS_SUC, SEO_MSG_SUC
-
     # 4xx, 5xx
     except requests.HTTPError:
         if status_code not in CLIENT_ERROR_CODES:
             return status, message
-        
-    # other exceptions
-    except requests.RequestException:
-        return status, message
     
     result = _seo(response.text)
     with db.connect() as conn:
