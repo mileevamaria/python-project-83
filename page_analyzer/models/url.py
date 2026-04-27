@@ -1,44 +1,104 @@
 import psycopg2
-from psycopg2.extras import RealDictCursor
 import requests
+
+from bs4 import BeautifulSoup
+from psycopg2.extras import RealDictCursor
 from urllib.parse import urlparse
 from validators.url import url as url_validation_func
 
 from page_analyzer import db
 
-# validation
-MAX_URL_LENGTH = 255
 DATE_FORMAT = '%Y-%m-%d'
 
-# SEO
-MSG_ERR = 'Произошла ошибка при проверке'
-MSG_SUC = 'Страница успешно проверена'
-STATUS_ERR = 'error'
+# validate & create
+MAX_URL_LENGTH = 255
+VAL_INCORRECT_MSG = 'Некорректный url'
+VAL_INCORRECT_LEN_MSG = f'Длина url не может превышать {MAX_URL_LENGTH} символов'
+CREATE_MSG_INFO = 'Страница уже существует'
+CREATE_MSG_SUC = 'Страница успешно добавлена'
+STATUS_ERR = 'danger'
 STATUS_SUC = 'success'
+STATUS_INFO = 'info'
+
+# seo
+SEO_MSG_ERR = 'Произошла ошибка при проверке'
+SEO_MSG_SUC = 'Страница успешно проверена'
 CLIENT_ERROR_CODES = range(400, 500)
 
 
-def create(name: str) -> tuple[int | None, str]:
+def _normalize(url: str) -> str:
+    parsed = urlparse(url)
+    return f"{parsed.scheme}://{parsed.netloc}"
+
+
+def _validate(url: str) -> str:
+    error = ''
+    validated_url = url_validation_func(url)
+    if validated_url is not True:
+        error = VAL_INCORRECT_MSG
+    if len(url) > MAX_URL_LENGTH:
+        error = VAL_INCORRECT_LEN_MSG
+    return error
+
+
+def _seo(html: str) -> dict:
+    soup = BeautifulSoup(html, 'html.parser')
+    result = {}
+
+    # h1
+    h1_tag = soup.find('h1')
+    result['h1'] = h1_tag.get_text(strip=True) if h1_tag else None
+
+    # title
+    title_tag = soup.find('title')
+    result['title'] = title_tag.get_text(strip=True) if title_tag else None
+
+    # meta description
+    description_tag = soup.find('meta', attrs={'name': 'description'})
+    result['description'] = (
+        description_tag.get('content').strip()
+        if description_tag and description_tag.get('content')
+        else None
+    )
+    return result
+
+
+def create(url: str) -> tuple[int | None, str, str]:
+    url_id = None
+    error = _validate(url)
+    if error:
+        return url_id, STATUS_ERR, error
+
     conn = db.connect()
     cur = conn.cursor()
-    url_id, message = None, None
     try:
         cur.execute('''
                 INSERT INTO urls (name) 
                 VALUES (%s) RETURNING id;
             ''',
-            (normalize(name),)
+            (_normalize(url),)
         )
         url_id = cur.fetchone()[0]
         conn.commit()
+        status, message = STATUS_SUC, CREATE_MSG_SUC
+
+    # unique violated
     except psycopg2.errors.UniqueViolation:
-        message = 'Страница уже существует'
+        status, message = STATUS_INFO, CREATE_MSG_INFO
         conn.rollback()
+        cur.execute('''
+                SELECT id FROM urls WHERE name = %s;
+            ''',
+            (url,),
+        )
+        url_id = cur.fetchone()[0]
+    
+    # close db
     finally:
-        message = 'Страница успешно добавлена'
         cur.close()
         conn.close()
-    return url_id, message
+        
+    return url_id, status, message
 
 
 def find(id: int) -> dict:
@@ -56,6 +116,7 @@ def find(id: int) -> dict:
     if not data:
         return {}
     
+    # checks list for url
     cur.execute('''
             SELECT 
                 id, 
@@ -63,10 +124,10 @@ def find(id: int) -> dict:
                 h1, 
                 title, 
                 description, 
-                date(created_at) AS checked_at
+                date(created_at) AS created_at
             FROM url_checks 
             WHERE url_id = %s
-            ORDER BY checked_at DESC;
+            ORDER BY id DESC;
         ''',
         (id,),   
     )
@@ -80,6 +141,8 @@ def find(id: int) -> dict:
 def all() -> list:
     conn = db.connect()
     cur = conn.cursor(cursor_factory=RealDictCursor)
+
+    # select url and results of its last check
     cur.execute('''
             SELECT DISTINCT ON (u.id)
                 u.id,
@@ -88,51 +151,42 @@ def all() -> list:
                 date(uc.created_at) AS last_created_at
             FROM urls u
             LEFT JOIN url_checks uc ON uc.url_id = u.id
-            ORDER BY u.id, last_created_at DESC;
+            ORDER BY u.id DESC;
         '''
     )
     results = cur.fetchall()
     cur.close()
     conn.close()
     return results
-
-
-def normalize(url: str) -> str:
-    parsed = urlparse(url)
-    return f"{parsed.scheme}://{parsed.netloc}"
-
-
-def validate(url: str) -> dict:
-    errors = {}
-    validated_url = url_validation_func(url)
-    if validated_url is not True:
-        errors['url'] = 'Некорректный url'
-    if len(url) > MAX_URL_LENGTH:
-        errors['url'] = f'Длина url не может превышать {MAX_URL_LENGTH} символов'
-    return errors
-
+    
 
 def add_check(id: int, url: str) -> tuple[str, str]:
-    status_code = None
-    status, message = STATUS_ERR, MSG_ERR
+    status, message = STATUS_ERR, SEO_MSG_ERR
+
+    # 2xx
     try:
         response = requests.get(url)
         status_code = response.status_code
         response.raise_for_status()
-        status, message = STATUS_SUC, MSG_SUC
+        status, message = STATUS_SUC, SEO_MSG_SUC
+
+    # 4xx, 5xx
     except requests.HTTPError:
         if status_code not in CLIENT_ERROR_CODES:
             return status, message
-    except Exception:
+        
+    # other exceptions
+    except requests.RequestException:
         return status, message
-
+    
+    result = _seo(response.text)
     conn = db.connect()
     cur = conn.cursor()
     cur.execute('''
-            INSERT INTO url_checks (url_id, status_code)
-            VALUES (%s, %s);
+            INSERT INTO url_checks (url_id, status_code, h1, title, description)
+            VALUES (%s, %s, %s, %s, %s);
         ''',
-        (id, status_code),
+        (id, status_code, result['h1'], result['title'], result['description']),
     )
     conn.commit()
     cur.close()

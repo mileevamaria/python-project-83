@@ -18,29 +18,19 @@ def main():
 
 @app.route('/urls', methods=['GET', 'POST'])
 def urls():
-    # Создание url
+    # POST: create
     if request.method == 'POST':
         data = request.form.to_dict()
         url = data['url']
-        errors = url_model.validate(url)
-        status = 'error'
-        if errors:
-            flash(errors['url'], status)
-            return redirect(url_for('main')), 422
-
-        url_id, message = url_model.create(url)
-        if url_id is None:
-            flash(message, status)
-            return redirect(url_for('main'))
-        status = 'success'
+        url_id, status, message = url_model.create(url)
         flash(message, status)
+        if status == url_model.STATUS_ERR:
+            return redirect(url_for('main'))
         return redirect(url_for('get_url', id=url_id))
 
-    # Список urls
+    # GET: list
     else:
-        urls = url_model.all()
-        print(f'urls: {urls}')
-        return render_template('list.html', urls=urls)
+        return render_template('list.html', urls=url_model.all())
 
 
 @app.route('/urls/<int:id>', methods=['GET'])

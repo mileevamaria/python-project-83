@@ -4,23 +4,17 @@
 
 {% block content %}
 
-{% with messages = get_flashed_messages(with_categories=true) %}
-    {% if messages %}
-        {% for message in messages %}
-            <div class="alert {% if message.0 == 'error' %}alert-danger{% else %}alert-success{% endif %} alert-dismissible fade show" style="width: 60%; margin: 10px auto;" role="alert">
-                {{ message.1 }}
-            </div>
-        {% endfor %}
-    {% endif %}
-{% endwith %}
-
-<div class="h-100 p-5 bg-body-tertiary border rounded-3" style="width: 60%; margin: auto;"> 
-    <p class="display-5">Анализатор страниц</p> 
-    <p>Бесплатно проверяйте сайты на SEO-пригодность</p>
-    <form class="d-flex" action="{{ url_for('urls') }}" method="post">    
-        <input class="form-control me-2" type="text" name="url" placeholder="https://example.com" aria-label="Сайт">
+<div class="row justify-content-center">
+  <div class="col-12 col-md-8 col-lg-7">
+    <div class="h-100 p-5 bg-body-tertiary border rounded-3">
+      <p class="display-5">Анализатор страниц</p> 
+      <p>Бесплатно проверяйте сайты на SEO-пригодность</p>
+      <form class="d-flex" action="{{ url_for('urls') }}" method="post">    
+        <input class="form-control me-2" type="text" name="url" placeholder="https://example.com">
         <button class="btn btn-primary" type="submit">ПРОВЕРИТЬ</button>
-    </form>
+      </form>
+    </div>
+  </div>
 </div>
 
 {% endblock %}
