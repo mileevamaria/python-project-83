@@ -25,7 +25,7 @@ def urls():
         url_id, status, message = url_model.create(url)
         flash(message, status)
         if status == url_model.STATUS_ERR:
-            return redirect(url_for('main'))
+            return render_template('index.html'), 422
         return redirect(url_for('get_url', id=url_id))
 
     # GET: list
