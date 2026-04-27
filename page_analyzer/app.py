@@ -16,7 +16,7 @@ def main():
     return render_template('index.html')
 
 
-@app.route('/urls/', methods=['GET', 'POST'])
+@app.route('/urls', methods=['GET', 'POST'])
 def urls():
     # Создание url
     if request.method == 'POST':
@@ -26,12 +26,12 @@ def urls():
         status = 'error'
         if errors:
             flash(errors['url'], status)
-            return render_template('index.html'), 422
+            return redirect(url_for('main')), 422
 
         url_id, message = url_model.create(url)
         if url_id is None:
             flash(message, status)
-            return redirect('/')
+            return redirect(url_for('main'))
         status = 'success'
         flash(message, status)
         return redirect(url_for('get_url', id=url_id))
@@ -39,11 +39,17 @@ def urls():
     # Список urls
     else:
         urls = url_model.all()
+        print(f'urls: {urls}')
         return render_template('list.html', urls=urls)
 
 
-@app.route('/urls/<int:id>/', methods=['GET'])
+@app.route('/urls/<int:id>', methods=['GET'])
 def get_url(id):
     url = url_model.find(id)
     return render_template('detail.html', url=url)
 
+
+@app.route('/urls/<int:id>/checks', methods=['POST'])
+def check_url(id):
+    url_model.add_check(id)
+    return redirect(url_for('get_url', id=id))

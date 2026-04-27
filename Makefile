@@ -14,6 +14,8 @@ dev:
 	uv run flask --debug --app page_analyzer:app run --port=5001
 render-start:
 	gunicorn -w 5 -b 0.0.0.0:$(PORT) page_analyzer:app
+db-dump:
+	pg_dump -U myuser -d mydb > database.sql
     
 shell-rec:
 	asciinema rec demo.cast

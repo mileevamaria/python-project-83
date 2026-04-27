@@ -14,7 +14,7 @@
     {% endif %}
 {% endwith %}
 
-    <h2>Сайты</h2> 
+    <p class="display-6">Сайты</p> 
     <table class="table table-sm table-bordered" data-test="urls">
         <thead>
         <tr>
@@ -28,9 +28,9 @@
         {% for url in urls %}
         <tr>
             <td>{{ url.id }}</td>
-            <td>{{ url.name }}</td>
-            <td></td>
-            <td></td>
+            <td><a href="{{ url_for('get_url', id=url.id) }}">{{ url.name }}</a></td>
+            <td>{{ url.last_created_at |default('', True) }}</td>
+            <td>{{ url.last_status_code |default('', True) }}</td>
         </tr>
         {% endfor %}
         </tbody>
