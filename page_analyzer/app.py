@@ -29,8 +29,7 @@ def urls():
         return redirect(url_for('get_url', id=url_id))
 
     # GET: list
-    else:
-        return render_template('list.html', urls=url_model.all())
+    return render_template('list.html', urls=url_model.all())
 
 
 @app.route('/urls/<int:id>', methods=['GET'])
@@ -43,8 +42,6 @@ def get_url(id):
 @app.route('/urls/<int:id>/checks', methods=['POST'])
 def check_url(id):
     url = url_model.find(id)
-    if not url:
-        return redirect(url_for('get_url', id=id)), 404
     status, message = url_model.add_check(id, url['name'])
     flash(message, status)
     return redirect(url_for('get_url', id=id))

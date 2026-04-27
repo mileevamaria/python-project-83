@@ -36,9 +36,9 @@ def _validate(url: str) -> str:
     error = ''
     validated_url = url_validation_func(url)
     if validated_url is not True:
-        error = VAL_INCORRECT_MSG
+        return VAL_INCORRECT_MSG
     if len(url) > MAX_URL_LENGTH:
-        error = VAL_INCORRECT_LEN_MSG
+        return VAL_INCORRECT_LEN_MSG
     return error
 
 
@@ -152,7 +152,7 @@ def all() -> list:
                         date(uc.created_at) AS last_created_at
                     FROM urls u
                     LEFT JOIN url_checks uc ON uc.url_id = u.id
-                    ORDER BY u.id DESC;
+                    ORDER BY u.id uc.created_at DESC;
                 '''
             )
             results = cur.fetchall()
