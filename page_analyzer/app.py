@@ -1,10 +1,9 @@
 import os
 
 from dotenv import load_dotenv
-from flask import Flask, flash, render_template, request, redirect, url_for
+from flask import Flask, flash, redirect, render_template, request, url_for
 
-from .models import url as url_model
-
+from page_analyzer.database import UrlModel
 
 load_dotenv()
 app = Flask(__name__)
@@ -22,26 +21,25 @@ def urls():
     if request.method == 'POST':
         data = request.form.to_dict()
         url = data['url']
-        url_id, status, message = url_model.create(url)
+        url_id, status, message = UrlModel.create(url)
         flash(message, status)
-        if status == url_model.STATUS_ERR:
+        if status == UrlModel.STATUS_ERR:
             return render_template('index.html'), 422
         return redirect(url_for('get_url', id=url_id))
 
     # GET: list
-    return render_template('list.html', urls=url_model.all())
+    return render_template('list.html', urls=UrlModel.all())
 
 
 @app.route('/urls/<int:id>', methods=['GET'])
 def get_url(id):
-    url = url_model.find(id)
-    print(f'url: {url}')
+    url = UrlModel.find(id)
     return render_template('detail.html', url=url)
 
 
 @app.route('/urls/<int:id>/checks', methods=['POST'])
 def check_url(id):
-    url = url_model.find(id)
-    status, message = url_model.add_check(id, url['name'])
+    url = UrlModel.find(id)
+    status, message = UrlModel.add_check(id, url['name'])
     flash(message, status)
     return redirect(url_for('get_url', id=id))
