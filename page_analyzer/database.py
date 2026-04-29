@@ -99,7 +99,6 @@ class UrlModel:
                 data['checks'] = cur.fetchall()
                 return data
 
-
     @staticmethod
     def all() -> list:
         # select url and results of its last check
